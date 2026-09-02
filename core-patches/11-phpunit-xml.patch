@@ -1,0 +1,14 @@
+diff --git a/phpunit.xml b/phpunit.xml
+index e21799cb72..05f8491710 100644
+--- a/phpunit.xml
++++ b/phpunit.xml
+@@ -16,6 +16,9 @@
+     <testsuite name="Feature">
+       <directory suffix="Test.php">./tests/Feature</directory>
+     </testsuite>
++    <testsuite name="FloatingLicenses">
++      <directory suffix="Test.php">./packages/floating-licenses/tests</directory>
++    </testsuite>
+   </testsuites>
+   <php>
+     <env name="APP_ENV" value="testing"/>

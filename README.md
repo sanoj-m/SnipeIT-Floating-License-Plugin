@@ -105,7 +105,7 @@ repository's `url` at it instead of copying.
 ### Manual / zip install (no git)
 
 Copy `package/` into `packages/floating-licenses`, edit `composer.json` as in
-step 2 above, and make the nine core edits by hand — `core-patches/README.md`
+step 2 above, and make the eleven core edits by hand — `core-patches/README.md`
 lists every hunk with its anchor text. Then steps 4–6 as above.
 
 ### Docker
@@ -229,7 +229,7 @@ php artisan optimize:clear`.
 
 1. `php artisan migrate:rollback --path=packages/floating-licenses/database/migrations`
    (**drops the floating tables' data** and the settings column).
-2. Remove the nine core edits (reverse the patches: `git apply -R`).
+2. Remove the eleven core edits (reverse the patches: `git apply -R`).
 3. Remove the composer.json entries (path repository, `require`,
    `autoload-dev` mapping) and `packages/floating-licenses`.
 4. `composer update snipe-it/floating-licenses --no-interaction && php artisan optimize:clear`

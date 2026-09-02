@@ -1,6 +1,6 @@
 # Core patches
 
-The plugin needs nine small, guarded edits to Snipe-IT core files. Each patch
+The plugin needs eleven small, guarded edits to Snipe-IT core files. Each patch
 is a real unified diff generated from a working Snipe-IT tree and applies with:
 
 ```bash
@@ -28,6 +28,8 @@ easy to find and re-apply after a Snipe-IT upgrade.
 | `07-license-view-blade.patch` | `resources/views/licenses/view.blade.php` | The big one: floating info rows in the info panel (License Type / Pool Size / Assigned Users / Available / Total Cost / Cost Per User), floating-assigned users table with per-row Checkin buttons + over-allocation alert in the Assigned tab, "Bulk User Actions" dropdown in the buttons slot, Available-tab info callout, and the `floating-remaining-override` script that corrects the core "Remaining" row. All guarded by the master switch. | Top of `@section('content')`, the `seats`/`available` tab panes, the `x-info-panel` default slot and `buttons` slot, before `@endsection` |
 | `08-license-checkout-blade.patch` | `resources/views/licenses/checkout.blade.php` | Checkout page header shows pool availability (`pool − active`) instead of seat count when floating; warning callout when the pool is exhausted and over-allocation is off. | Top of `@section('content')`; the `x-box header=` line |
 | `09-settings-general-blade.patch` | `resources/views/settings/general.blade.php` | One `x-form.checkbox-row` named `floating_licenses_enabled` ("Floating Licenses (addon)") in General settings. | After the `shortcuts_enabled` checkbox-row |
+| `10-user-view-blade.patch` | `resources/views/users/view.blade.php` | User profile Licenses tab: loads the user's active floating allocations (master-switch guarded), adds a "License Type" column (Fixed Seats vs Floating / Concurrent), renders floating allocations as rows with allocated cost and a per-row Checkin button (POST to `floating-licenses.allocations.release`), and includes the floating count in the tab badge and transfer-button condition. | Top of `@section('content')`, the `licenses` tab pane, the `x-tabs.license-tab` count, the transfer-button `@if` |
+| `11-phpunit-xml.patch` | `phpunit.xml` | Registers a `FloatingLicenses` testsuite pointing at `packages/floating-licenses/tests` so `php artisan test --testsuite=FloatingLicenses` works. | After the `Feature` testsuite |
 
 ## If git apply fails
 

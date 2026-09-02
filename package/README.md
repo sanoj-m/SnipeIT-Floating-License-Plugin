@@ -99,7 +99,7 @@ is safe to re-apply after a Snipe-IT upgrade (see below):
 
 ### Re-applying after a Snipe-IT upgrade
 
-1. Pull/upgrade Snipe-IT core as usual; if any of the nine edited files
+1. Pull/upgrade Snipe-IT core as usual; if any of the eleven edited files
    conflict, take the upstream version and re-apply the hunks listed in the
    table above (they are intentionally tiny and self-contained; PHP hunks are
    delimited by `// [floating-licenses addon] BEGIN/END` comments).
@@ -108,7 +108,7 @@ is safe to re-apply after a Snipe-IT upgrade (see below):
 4. `php artisan optimize:clear`
 
 If the package is not installed, the core edits would reference a missing
-class — either keep the package installed or remove the nine edits.
+class — either keep the package installed or remove the eleven edits.
 
 ## Configuration
 
