@@ -1,0 +1,13 @@
+diff --git a/app/Http/Controllers/SettingsController.php b/app/Http/Controllers/SettingsController.php
+index c91a61ff0e..afd9a860cb 100644
+--- a/app/Http/Controllers/SettingsController.php
++++ b/app/Http/Controllers/SettingsController.php
+@@ -129,6 +129,8 @@ class SettingsController extends Controller
+ 
+         $setting->unique_serial = $request->input('unique_serial', '0');
+         $setting->shortcuts_enabled = $request->input('shortcuts_enabled', '0');
++        // Floating-licenses addon master switch (column added by the addon's package migration).
++        $setting->floating_licenses_enabled = $request->input('floating_licenses_enabled', '0');
+         $setting->show_images_in_email = $request->input('show_images_in_email', '0');
+         $setting->show_archived_in_list = $request->input('show_archived_in_list', '0');
+         $setting->dashboard_message = $request->input('dashboard_message');

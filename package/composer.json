@@ -1,0 +1,26 @@
+{
+    "name": "snipe-it/floating-licenses",
+    "description": "Floating / concurrent software license pools for Snipe-IT",
+    "type": "library",
+    "license": "AGPL-3.0-or-later",
+    "require": {
+        "php": "^8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "SnipeIt\\FloatingLicenses\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SnipeIt\\FloatingLicenses\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SnipeIt\\FloatingLicenses\\FloatingLicensesServiceProvider"
+            ]
+        }
+    }
+}

@@ -1,0 +1,45 @@
+diff --git a/app/Http/Transformers/LicensesTransformer.php b/app/Http/Transformers/LicensesTransformer.php
+index b548951620..4f6b4bb652 100644
+--- a/app/Http/Transformers/LicensesTransformer.php
++++ b/app/Http/Transformers/LicensesTransformer.php
+@@ -16,6 +16,40 @@ class LicensesTransformer
+             $array[] = self::transformLicense($license);
+         }
+ 
++        // [floating-licenses addon] BEGIN — core seat math ignores floating
++        // allocations, so recompute avail/percent for licenses with a
++        // floating pool. Two grouped queries for the whole page (no N+1).
++        if (\SnipeIt\FloatingLicenses\Support\FloatingLicenseSync::isEnabled()) {
++            $licenseIds = collect($array)->pluck('id')->all();
++            $floatingLicenseIds = \SnipeIt\FloatingLicenses\Models\FloatingLicenseConfig::whereIn('license_id', $licenseIds)
++                ->pluck('license_id')->all();
++
++            if ($floatingLicenseIds !== []) {
++                $activeCounts = \SnipeIt\FloatingLicenses\Models\FloatingLicenseAllocation::whereIn('license_id', $floatingLicenseIds)
++                    ->where('status', \SnipeIt\FloatingLicenses\Models\FloatingLicenseAllocation::STATUS_ACTIVE)
++                    ->groupBy('license_id')
++                    ->selectRaw('license_id, COUNT(*) as active_count')
++                    ->pluck('active_count', 'license_id');
++
++                foreach ($array as &$row) {
++                    if (in_array($row['id'], $floatingLicenseIds, true)) {
++                        $active = (int) ($activeCounts[$row['id']] ?? 0);
++                        // seats - active floating allocations; may go negative
++                        // when over-allocated — that is correct and desired.
++                        $avail = $row['seats'] - $active;
++                        $row['free_seats_count'] = $avail;
++                        $row['remaining'] = $avail;
++                        // Clamp only the percentage bar to 0-100 for display.
++                        $row['percent_remaining'] = $row['seats'] > 0
++                            ? max(0, min(100, round(($avail / $row['seats']) * 100)))
++                            : 0;
++                    }
++                }
++                unset($row);
++            }
++        }
++        // [floating-licenses addon] END
++
+         return (new DatatablesTransformer)->transformDatatables($array, $total);
+     }
+ 

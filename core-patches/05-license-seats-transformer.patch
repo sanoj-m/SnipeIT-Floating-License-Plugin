@@ -1,0 +1,37 @@
+diff --git a/app/Http/Transformers/LicenseSeatsTransformer.php b/app/Http/Transformers/LicenseSeatsTransformer.php
+index 98b9a17d6b..1b7cded206 100644
+--- a/app/Http/Transformers/LicenseSeatsTransformer.php
++++ b/app/Http/Transformers/LicenseSeatsTransformer.php
+@@ -14,8 +14,31 @@ class LicenseSeatsTransformer
+     {
+         $array = [];
+ 
++        // [floating-licenses addon] BEGIN — one grouped query: which of this
++        // page's licenses have a floating pool (per-seat checkout must be
++        // suppressed for those, or users would be double-tracked).
++        $floatingLicenseIds = [];
++        if (\SnipeIt\FloatingLicenses\Support\FloatingLicenseSync::isEnabled()) {
++            $floatingLicenseIds = \SnipeIt\FloatingLicenses\Models\FloatingLicenseConfig::whereIn(
++                'license_id',
++                $seats->pluck('license_id')->unique()->all()
++            )->pluck('license_id')->all();
++        }
++        // [floating-licenses addon] END
++
+         foreach ($seats as $seat) {
+-            $array[] = self::transformLicenseSeat($seat);
++            $row = self::transformLicenseSeat($seat);
++
++            // [floating-licenses addon] BEGIN — suppress the per-seat checkout
++            // action for floating licenses (licenseSeatInOutFormatter keys on
++            // available_actions.checkout + user_can_checkout).
++            if (in_array((int) $seat->license_id, $floatingLicenseIds, true)) {
++                $row['available_actions']['checkout'] = false;
++                $row['user_can_checkout'] = false;
++            }
++            // [floating-licenses addon] END
++
++            $array[] = $row;
+         }
+ 
+         return (new DatatablesTransformer)->transformDatatables($array, $total);

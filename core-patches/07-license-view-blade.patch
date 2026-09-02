@@ -1,0 +1,218 @@
+diff --git a/resources/views/licenses/view.blade.php b/resources/views/licenses/view.blade.php
+index 15ca47d577..032dd0bc8c 100755
+--- a/resources/views/licenses/view.blade.php
++++ b/resources/views/licenses/view.blade.php
+@@ -13,6 +13,24 @@
+ 
+ {{-- Page content --}}
+ @section('content')
++    {{-- Floating-licenses addon (master switch in Admin > Settings > General).
++         When the switch is on, every license behaves floating: the resolver
++         lazily persists a default pool config from seats/purchase_cost. --}}
++    @php
++        $floatingMasterOn = (($snipeSettings->floating_licenses_enabled ?? '0') == '1');
++        $explicitFloatingConfig = $floatingMasterOn
++            ? \SnipeIt\FloatingLicenses\Models\FloatingLicenseConfig::where('license_id', $license->id)->first()
++            : null;
++        $floatingConfig = $floatingMasterOn
++            ? \SnipeIt\FloatingLicenses\Support\FloatingLicenseSync::configForLicense($license)
++            : null;
++        $floatingService = app(\SnipeIt\FloatingLicenses\Services\FloatingLicenseService::class);
++        $floatingAllocations = $floatingConfig
++            ? $floatingConfig->activeAllocations()->with(['user', 'asset'])->orderBy('allocated_at', 'desc')->get()
++            : collect();
++        $floatingStats = $floatingConfig ? $floatingService->availability($floatingConfig) : null;
++        $floatingCostPerUser = $floatingConfig ? $floatingService->costPerUser($floatingConfig) : 0.0;
++    @endphp
+     <x-container columns="2">
+         <x-page-column class="col-md-9 main-panel">
+             <x-tabs>
+@@ -65,6 +83,59 @@
+                             export_filename="export-{{ str_slug($license->name) }}-assigned-{{ date('Y-m-d') }}"
+                         />
+ 
++                        {{-- Floating-licenses addon: floating-assigned users + over-allocation indicator --}}
++                        @if ($floatingConfig && $floatingAllocations->isNotEmpty())
++                            <h4>{{ trans('floating-licenses::floating.floating_assignments_heading') }}</h4>
++
++                            @if ($floatingStats['over_allocated'])
++                                <div class="alert alert-warning">
++                                    <span class="label label-warning">
++                                        {{ trans('floating-licenses::floating.over_allocated_label', [
++                                            'assigned' => $floatingStats['active'],
++                                            'pool' => $floatingStats['pool_size'],
++                                            'excess' => $floatingStats['excess'],
++                                        ]) }}
++                                    </span>
++                                </div>
++                            @endif
++
++                            <table class="table table-striped">
++                                <thead>
++                                    <tr>
++                                        <th>{{ trans('floating-licenses::floating.user') }}</th>
++                                        <th>{{ trans('floating-licenses::floating.asset') }}</th>
++                                        <th>{{ trans('floating-licenses::floating.allocated_at') }}</th>
++                                        @can('floating_licenses.costs')
++                                            <th>{{ trans('floating-licenses::floating.allocated_cost') }}</th>
++                                        @endcan
++                                        <th>{{ trans('floating-licenses::floating.actions') }}</th>
++                                    </tr>
++                                </thead>
++                                <tbody>
++                                    @foreach ($floatingAllocations as $allocation)
++                                        <tr>
++                                            <td>{{ $allocation->user?->display_name ?? $allocation->user_id }}</td>
++                                            <td>{{ $allocation->asset?->present()?->name() ?? $allocation->asset?->asset_tag }}</td>
++                                            <td>{{ $allocation->allocated_at }}</td>
++                                            @can('floating_licenses.costs')
++                                                <td>{{ $snipeSettings->default_currency }} {{ \App\Helpers\Helper::formatCurrencyOutput($allocation->allocated_cost) }}</td>
++                                            @endcan
++                                            <td>
++                                                {{-- [floating-licenses addon] mirrors the release handler's
++                                                     authorization: own allocation OR release permission. --}}
++                                                @if (($allocation->user_id === auth()->id()) || Gate::allows('floating_licenses.release'))
++                                                    <form method="POST" action="{{ route('floating-licenses.allocations.release', $allocation) }}" style="display:inline">
++                                                        @csrf
++                                                        <button type="submit" class="btn btn-sm bg-purple">{{ trans('general.checkin') }}</button>
++                                                    </form>
++                                                @endif
++                                            </td>
++                                        </tr>
++                                    @endforeach
++                                </tbody>
++                            </table>
++                        @endif
++
+                     </x-tabs.pane>
+ 
+ 
+@@ -74,6 +145,14 @@
+                             {{ trans('general.available') }}
+                         </x-slot:table_header>
+ 
++                        {{-- [floating-licenses addon] Per-seat checkout is suppressed for
++                             floating licenses (see LicenseSeatsTransformer hunk); explain why. --}}
++                        @if ($floatingConfig)
++                            <div class="callout callout-info">
++                                <p>{{ trans('floating-licenses::floating.available_tab_note') }}</p>
++                            </div>
++                        @endif
++
+                         <x-table
+                             show_search="false"
+                             api_url="{{ route('api.licenses.seats.index', [$license->id, 'status' => 'available']) }}"
+@@ -106,12 +185,78 @@
+             <x-box class="side-box expanded">
+                 <x-info-panel :infoPanelObj="$license" img_path="{{ app('licenses_upload_url') }}" :qr_code_url="route('qr_code/common', ['object_type' => 'licenses', 'id' => $license->id])">
+ 
++                    {{-- Floating-licenses addon: info rows inside the license info list --}}
++                    @if ($floatingConfig)
++                        <x-info-element icon_type="licenses" title="{{ trans('floating-licenses::floating.license_type') }}">
++                            {{ trans('floating-licenses::floating.license_type') }}
++                            <span class="pull-right">
++                                {{ $explicitFloatingConfig ? trans('floating-licenses::floating.type_floating') : trans('floating-licenses::floating.type_fixed') }}
++                                @if ($floatingStats['over_allocated'])
++                                    <span class="label label-warning" data-tooltip="true" title="{{ trans('floating-licenses::floating.over_allocated_label', ['assigned' => $floatingStats['active'], 'pool' => $floatingStats['pool_size'], 'excess' => $floatingStats['excess']]) }}">+{{ $floatingStats['excess'] }}</span>
++                                @endif
++                            </span>
++                        </x-info-element>
++
++                        <x-info-element icon_type="seats" title="{{ trans('floating-licenses::floating.pool_size') }}">
++                            {{ trans('floating-licenses::floating.pool_size') }}
++                            <span class="pull-right">{{ $floatingStats['pool_size'] }}</span>
++                        </x-info-element>
++
++                        <x-info-element icon_type="users" title="{{ trans('floating-licenses::floating.assigned_users') }}">
++                            {{ trans('floating-licenses::floating.assigned_users') }}
++                            <span class="pull-right">{{ $floatingStats['active'] }}</span>
++                        </x-info-element>
++
++                        <x-info-element icon_type="available" title="{{ trans('floating-licenses::floating.available') }}">
++                            {{ trans('floating-licenses::floating.available') }}
++                            <span class="pull-right">{{ $floatingStats['pool_size'] - $floatingStats['active'] }}</span>
++                        </x-info-element>
++
++                        @can('floating_licenses.costs')
++                            <x-info-element icon_type="cost" title="{{ trans('floating-licenses::floating.total_cost') }}">
++                                {{ trans('floating-licenses::floating.total_cost') }}
++                                <span class="pull-right">{{ $snipeSettings->default_currency }} {{ \App\Helpers\Helper::formatCurrencyOutput($floatingConfig->total_cost) }}</span>
++                            </x-info-element>
++
++                            <x-info-element icon_type="cost" title="{{ trans('floating-licenses::floating.cost_per_user') }}">
++                                {{ trans('floating-licenses::floating.cost_per_user') }}
++                                <span class="pull-right">{{ $snipeSettings->default_currency }} {{ \App\Helpers\Helper::formatCurrencyOutput($floatingCostPerUser) }}</span>
++                            </x-info-element>
++                        @endcan
++                    @endif
++
+ 
+                     <x-slot:buttons>
+                         <x-button.edit :item="$license" :route="route('licenses.edit', $license->id)"/>
+                         <x-button.clone :item="$license" :route="route('clone/license', $license->id)"/>
+                         <x-button.checkout permission="checkout" :item="$license" :route="route('licenses.checkout', $license->id)" />
+ 
++                        {{-- Floating-licenses addon: bulk user actions dropdown --}}
++                        @if ($floatingMasterOn && (Gate::allows('floating_licenses.allocate') || Gate::allows('floating_licenses.release')))
++                            <div class="dropdown" style="display: inline-block;">
++                                <button type="button" class="btn btn-primary btn-sm dropdown-toggle hidden-print" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
++                                    <x-icon type="users" class="fa-fw"/>
++                                    {{ trans('floating-licenses::floating.bulk_actions') }} <span class="caret"></span>
++                                </button>
++                                <ul class="dropdown-menu">
++                                    @can('floating_licenses.allocate')
++                                        <li>
++                                            <a href="{{ route('floating-licenses.license.bulk-add.form', $license) }}">
++                                                {{ trans('floating-licenses::floating.bulk_add') }}
++                                            </a>
++                                        </li>
++                                    @endcan
++                                    @can('floating_licenses.release')
++                                        <li>
++                                            <a href="{{ route('floating-licenses.license.bulk-remove.form', $license) }}">
++                                                {{ trans('floating-licenses::floating.bulk_remove') }}
++                                            </a>
++                                        </li>
++                                    @endcan
++                                </ul>
++                            </div>
++                        @endif
++
+                         @can('checkout', $license)
+ 
+                             @if (($license->availCount()->count() > 0) && (!$license->isInactive()))
+@@ -180,6 +325,34 @@
+           ])
+ @endcan
+ 
++{{-- [floating-licenses addon] Bug B: the info panel's core "Remaining" row
++     (rendered by the shared x-info-panel component, which this addon must not
++     edit) uses seat-based math and ignores floating allocations. Replace its
++     value client-side with the floating availability (pool - active), keeping
++     the same row and label; negative means over-allocated. Master-off /
++     no-config renders exactly as core (this block is not output at all). --}}
++@if ($floatingConfig)
++    @php
++        $floatingRemaining = $floatingStats['pool_size'] - $floatingStats['active'];
++        $floatingRemainingHtml = ($floatingRemaining < 0)
++            ? '<span class="label label-warning">'.$floatingRemaining.'</span> '.trans('general.remaining')
++            : $floatingRemaining.' '.trans('general.remaining');
++    @endphp
++    <script id="floating-remaining-override" data-remaining="{{ $floatingRemaining }}">
++        document.addEventListener('DOMContentLoaded', function () {
++            // The info-element row's id is str_slug(trans('general.remaining')).
++            var remainingRow = document.getElementById('remaining');
++            if (remainingRow) {
++                remainingRow.innerHTML = @json($floatingRemainingHtml);
++                @if ($floatingRemaining < 0)
++                remainingRow.classList.remove('text-success');
++                remainingRow.classList.add('text-danger');
++                @endif
++            }
++        });
++    </script>
++@endif
++
+ @endsection
+ 
+ @section('moar_scripts')

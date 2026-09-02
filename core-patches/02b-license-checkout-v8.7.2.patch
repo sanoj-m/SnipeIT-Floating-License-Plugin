@@ -1,0 +1,43 @@
+diff --git a/app/Http/Controllers/Licenses/LicenseCheckoutController.php b/app/Http/Controllers/Licenses/LicenseCheckoutController.php
+index a45c877f9b..cad0cbf22c 100644
+--- a/app/Http/Controllers/Licenses/LicenseCheckoutController.php
++++ b/app/Http/Controllers/Licenses/LicenseCheckoutController.php
+@@ -102,6 +102,38 @@ class LicenseCheckoutController extends Controller
+ 
+         $this->authorize('checkout', $license);
+ 
++        // [floating-licenses addon] BEGIN — a license with a floating pool
++        // allocates a pool slot instead of occupying a license_seats record.
++        // Runs before the seat-availability checks on purpose: capacity is
++        // enforced by FloatingLicenseService::allocate() (PoolExhaustedException).
++        // Only intercepts when the master switch is ON and a USER target is
++        // resolvable (directly, or via the asset's current assignee, mirroring
++        // checkoutToAsset()) — pure asset checkouts with no user fall through
++        // to the core seat flow.
++        if (\SnipeIt\FloatingLicenses\Support\FloatingLicenseSync::isEnabled()
++            && ($floatingConfig = \SnipeIt\FloatingLicenses\Support\FloatingLicenseSync::configForLicense($license))) {
++            $floatingUser = $request->filled('assigned_to') ? User::find($request->input('assigned_to')) : null;
++            $floatingAsset = $request->filled('asset_id') ? Asset::find($request->input('asset_id')) : null;
++
++            if (! $floatingUser && $floatingAsset && $floatingAsset->checkedOutToUser()) {
++                $floatingUser = $floatingAsset->assigned_to ? User::find($floatingAsset->assigned_to) : null;
++            }
++
++            if ($floatingUser) {
++                try {
++                    app(\SnipeIt\FloatingLicenses\Services\FloatingLicenseService::class)
++                        ->allocate($floatingConfig, $floatingUser, $floatingAsset, $request->input('notes'));
++                } catch (\SnipeIt\FloatingLicenses\Exceptions\PoolExhaustedException) {
++                    return redirect()->route('licenses.show', $license->id)
++                        ->with('error', trans('floating-licenses::floating.error.pool_exhausted'));
++                }
++
++                return redirect()->route('licenses.show', $license->id)
++                    ->with('success', trans('admin/licenses/message.checkout.success'));
++            }
++        }
++        // [floating-licenses addon] END
++
+         // Make sure there is at least one available to checkout
+         if ($license->availCount()->count() < 1) {
+             return redirect()->route('licenses.index')->with('error', trans('admin/licenses/message.checkout.not_enough_seats'));

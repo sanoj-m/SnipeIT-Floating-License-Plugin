@@ -1,0 +1,37 @@
+diff --git a/resources/views/licenses/checkout.blade.php b/resources/views/licenses/checkout.blade.php
+index eb633c4e7d..9075425095 100755
+--- a/resources/views/licenses/checkout.blade.php
++++ b/resources/views/licenses/checkout.blade.php
+@@ -15,12 +15,31 @@
+ {{-- Page content --}}
+ @section('content')
+ 
++    {{-- [floating-licenses addon] Floating pool availability replaces the
++         seat-based count when the addon is on and the license has a pool. --}}
++    @php
++        $floatingConfig = \SnipeIt\FloatingLicenses\Support\FloatingLicenseSync::isEnabled()
++            ? \SnipeIt\FloatingLicenses\Support\FloatingLicenseSync::configForLicense($license)
++            : null;
++        $floatingStats = $floatingConfig
++            ? app(\SnipeIt\FloatingLicenses\Services\FloatingLicenseService::class)->availability($floatingConfig)
++            : null;
++        $floatingAvailableCount = $floatingStats ? $floatingStats['pool_size'] - $floatingStats['active'] : null;
++    @endphp
++
+     <x-container columns="2">
+         <x-page-column class="col-md-7">
+ 
+             <x-form id="checkout_form" route="{{ url()->current() }}">
+ 
+-                <x-box header="{{ $license->name }} ({{ trans('admin/licenses/message.seats_available', ['seat_count' => $license->availCount()->count()]) }})">
++                <x-box header="{{ $license->name }} ({{ trans('admin/licenses/message.seats_available', ['seat_count' => $floatingAvailableCount ?? $license->availCount()->count()]) }})">
++
++                    {{-- [floating-licenses addon] Pool exhausted and over-allocation off --}}
++                    @if ($floatingStats && $floatingAvailableCount <= 0 && ! $floatingStats['over_allocation_allowed'])
++                        <div class="callout callout-warning" style="margin: 10px;">
++                            <p>{{ trans('floating-licenses::floating.error.pool_exhausted') }}</p>
++                        </div>
++                    @endif
+ 
+                     <x-form.static :label="trans('admin/hardware/form.name')">{{ $license->name }}</x-form.static>
+ 
