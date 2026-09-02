@@ -108,6 +108,56 @@ seats / 35 users, cost spread across all); bulk add/remove users for any license
 - All 9 core patches confirmed present on the server; master switch = 1.
 - Final server test run: **105/105 passing**.
 
+# Session 2 — 2026-09-02 (follow-up fixes)
+
+## 9. User-profile Licenses tab shows floating allocations
+
+- Problem: floating assignments never appeared on the user's profile Licenses
+  pane (only `license_seats` rows did).
+- New `core-patches/10-user-view-blade.patch`: user profile Licenses tab loads
+  the user's active `FloatingLicenseAllocation`s (master-switch guarded), adds a
+  **License Type** column (Fixed Seats vs Floating / Concurrent), renders
+  floating rows with allocated cost and a per-row Checkin (POST to
+  `floating-licenses.allocations.release`), and counts them in the tab badge
+  and transfer-button condition.
+- Deployed to the server via base64-chunked upload (no SFTP subsystem), then
+  `view:clear` + `optimize:clear`.
+- Bug found on deploy: a `{{-- --}}` Blade comment inside an `@php` block
+  caused a 500 parse error — replaced with `//` comments (patch corrected in
+  commit `160f80b`).
+
+## 10. Bulk checkin includes floating rows; floating users link to profiles
+
+- Floating rows on the user profile now have bulk-select checkboxes with value
+  `floating:<allocation_id>` (join count badge + select-all).
+- New `core-patches/12-license-checkin-controller.patch`:
+  `LicenseCheckinController::bulkCheckinSelected()` splits `floating:` ids from
+  seat ids and releases them via `FloatingLicenseService::release()`, same
+  authorization as the single-release handler (own allocation or
+  `floating_licenses.release`).
+- License view "Floating-Assigned Users" names now link to `users.show`.
+- Also added `core-patches/11-phpunit-xml.patch` (FloatingLicenses testsuite
+  registration, previously only on disk).
+
+## 11. Fix: disabling floating now sticks
+
+- Root cause: `FloatingLicenseSync::configForLicense()` lazily created AND
+  persisted a config on first view while the master switch is on, so unchecking
+  Floating in the edit form was undone on the next page view.
+- Fix: a soft-deleted config now means "explicitly disabled" — the resolver
+  returns null and does not recreate it; re-enabling revives the trashed row.
+- Regression test `test_config_resolver_does_not_recreate_soft_deleted_config`;
+  LicenseFormSyncTest 16/16 passing on the server.
+
+## 12. Repo housekeeping
+
+- Removed all 8 screenshots from README + `docs/screenshots/` (history still
+  contains them; history rewrite offered but not requested).
+- Patch count references updated to twelve across READMEs.
+- Patch 07 regenerated to include newer license-view edits (Available tab
+  hidden for floating licenses).
+- `packages/floating-licenses` verified byte-identical to repo `package/`.
+
 ## Notes / caveats
 
 - Root DB password and SSH root password were shared in chat (plaintext) —
