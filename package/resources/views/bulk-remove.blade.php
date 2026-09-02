@@ -23,28 +23,41 @@
                 <form method="POST" action="{{ route('floating-licenses.license.bulk-remove', $license) }}">
                     @csrf
                     <div class="box-body">
-                        @if ($floatingUsers->isNotEmpty())
-                            <h4>{{ trans('floating-licenses::floating.floating_assignments') }}</h4>
-                            @foreach ($floatingUsers as $user)
-                                <div class="checkbox">
-                                    <label>
-                                        <input type="checkbox" name="user_ids[]" value="{{ $user->id }}">
-                                        {{ $user->display_name }} ({{ $user->username }})
-                                    </label>
-                                </div>
-                            @endforeach
-                        @endif
-                        @if ($seatUsers->isNotEmpty())
-                            <h4>{{ trans('floating-licenses::floating.seat_assignments') }}</h4>
-                            @foreach ($seatUsers as $user)
-                                <div class="checkbox">
-                                    <label>
-                                        <input type="checkbox" name="user_ids[]" value="{{ $user->id }}">
-                                        {{ $user->display_name }} ({{ $user->username }})
-                                    </label>
-                                </div>
-                            @endforeach
-                        @endif
+                        <input type="text" id="bulkUserFilter" class="form-control" placeholder="{{ trans('general.search') }}" style="margin-bottom:8px;">
+
+                        <div class="checkbox" style="margin-top:0;">
+                            <label>
+                                <input type="checkbox" id="bulkUserSelectAll">
+                                <strong>{{ trans('general.select_all_none') }}</strong>
+                                (<span id="bulkUserSelectedCount">0</span> {{ trans('general.selected') }})
+                            </label>
+                        </div>
+
+                        <div style="max-height:400px; overflow-y:auto; border:1px solid #d2d6de; border-radius:4px; padding:8px 12px;">
+                            @if ($floatingUsers->isNotEmpty())
+                                <h4 style="margin-top:4px;">{{ trans('floating-licenses::floating.floating_assignments') }}</h4>
+                                @foreach ($floatingUsers as $user)
+                                    <div class="checkbox bulk-user-row" style="padding:4px 0; margin:0;" data-search="{{ strtolower($user->display_name . ' ' . $user->username) }}">
+                                        <label>
+                                            <input type="checkbox" name="user_ids[]" value="{{ $user->id }}" class="bulk-user-checkbox">
+                                            {{ $user->display_name }} ({{ $user->username }})
+                                        </label>
+                                    </div>
+                                @endforeach
+                            @endif
+                            @if ($seatUsers->isNotEmpty())
+                                <h4>{{ trans('floating-licenses::floating.seat_assignments') }}</h4>
+                                @foreach ($seatUsers as $user)
+                                    <div class="checkbox bulk-user-row" style="padding:4px 0; margin:0;" data-search="{{ strtolower($user->display_name . ' ' . $user->username) }}">
+                                        <label>
+                                            <input type="checkbox" name="user_ids[]" value="{{ $user->id }}" class="bulk-user-checkbox">
+                                            {{ $user->display_name }} ({{ $user->username }})
+                                        </label>
+                                    </div>
+                                @endforeach
+                            @endif
+                        </div>
+
                         @if ($errors->has('user_ids'))
                             <p class="help-block has-error">{{ $errors->first('user_ids') }}</p>
                         @endif
@@ -58,4 +71,41 @@
         </div>
     </div>
 </div>
+
+@if ($floatingUsers->isNotEmpty() || $seatUsers->isNotEmpty())
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var filter = document.getElementById('bulkUserFilter');
+        var selectAll = document.getElementById('bulkUserSelectAll');
+        var countEl = document.getElementById('bulkUserSelectedCount');
+
+        function visibleBoxes() {
+            return Array.prototype.filter.call(
+                document.querySelectorAll('.bulk-user-checkbox'),
+                function (box) { return box.closest('.bulk-user-row').style.display !== 'none'; }
+            );
+        }
+
+        function refreshCount() {
+            countEl.textContent = document.querySelectorAll('.bulk-user-checkbox:checked').length;
+        }
+
+        filter.addEventListener('input', function () {
+            var q = filter.value.toLowerCase();
+            document.querySelectorAll('.bulk-user-row').forEach(function (row) {
+                row.style.display = row.dataset.search.indexOf(q) === -1 ? 'none' : '';
+            });
+        });
+
+        selectAll.addEventListener('change', function () {
+            visibleBoxes().forEach(function (box) { box.checked = selectAll.checked; });
+            refreshCount();
+        });
+
+        document.addEventListener('change', function (event) {
+            if (event.target.matches('.bulk-user-checkbox')) { refreshCount(); }
+        });
+    });
+</script>
+@endif
 @stop

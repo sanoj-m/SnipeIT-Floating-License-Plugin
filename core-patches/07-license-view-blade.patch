@@ -1,5 +1,5 @@
 diff --git a/resources/views/licenses/view.blade.php b/resources/views/licenses/view.blade.php
-index 15ca47d577..57156a7fd4 100755
+index 15ca47d577..1a7b81b2ed 100755
 --- a/resources/views/licenses/view.blade.php
 +++ b/resources/views/licenses/view.blade.php
 @@ -13,6 +13,24 @@
@@ -42,7 +42,7 @@ index 15ca47d577..57156a7fd4 100755
                      @endcan
  
                      <x-tabs.files-tab :item="$license" count="{{ $license->uploads()->count() }}"/>
-@@ -65,10 +85,64 @@
+@@ -65,10 +85,83 @@
                              export_filename="export-{{ str_slug($license->name) }}-assigned-{{ date('Y-m-d') }}"
                          />
  
@@ -62,9 +62,23 @@ index 15ca47d577..57156a7fd4 100755
 +                                </div>
 +                            @endif
 +
++                            @can('checkin', \App\Models\License::class)
++                            <form method="POST" action="{{ route('licenses.bulkcheckin.selected') }}" id="floatingBulkCheckinForm" class="form-inline hidden-print" style="margin-bottom:10px;">
++                                @csrf
++                                <select name="bulk_actions" class="form-control select2" style="min-width:200px;">
++                                    <option value="checkin">{{ trans('general.checkin') }}</option>
++                                </select>
++                                <button type="submit" id="floatingBulkCheckinButton" class="btn btn-theme" disabled>{{ trans('button.go') }}</button>
++                                <span id="floatingBulkCheckinCount" style="display:none; margin-left:8px; line-height:34px;">&mdash; <span class="badge">0</span> {{ trans('general.selected') }}</span>
++                            </form>
++                            @endcan
++
 +                            <table class="table table-striped">
 +                                <thead>
 +                                    <tr>
++                                        @can('checkin', \App\Models\License::class)
++                                            <th class="hidden-print" style="width:30px;"><input type="checkbox" id="floatingSelectAll" class="hidden-print" aria-label="{{ trans('general.select_all_none') }}"></th>
++                                        @endcan
 +                                        <th>{{ trans('floating-licenses::floating.user') }}</th>
 +                                        <th>{{ trans('floating-licenses::floating.asset') }}</th>
 +                                        <th>{{ trans('floating-licenses::floating.allocated_at') }}</th>
@@ -77,6 +91,11 @@ index 15ca47d577..57156a7fd4 100755
 +                                <tbody>
 +                                    @foreach ($floatingAllocations as $allocation)
 +                                        <tr>
++                                            @can('checkin', \App\Models\License::class)
++                                                <td class="hidden-print">
++                                                    <input type="checkbox" class="floating-allocation-checkbox hidden-print" form="floatingBulkCheckinForm" name="ids[]" value="floating:{{ $allocation->id }}">
++                                                </td>
++                                            @endcan
 +                                            <td>@if ($allocation->user)<a href="{{ route('users.show', $allocation->user_id) }}">{{ $allocation->user->display_name }}</a>@else{{ $allocation->user_id }}@endif</td>
 +                                            <td>{{ $allocation->asset?->present()?->name() ?? $allocation->asset?->asset_tag }}</td>
 +                                            <td>{{ $allocation->allocated_at }}</td>
@@ -107,7 +126,7 @@ index 15ca47d577..57156a7fd4 100755
                      <x-tabs.pane name="available">
                          <x-slot:table_header>
                              {{ trans('general.available') }}
-@@ -82,6 +156,7 @@
+@@ -82,6 +175,7 @@
                          />
  
                      </x-tabs.pane>
@@ -115,7 +134,7 @@ index 15ca47d577..57156a7fd4 100755
                      @endcan
  
  
-@@ -106,12 +181,78 @@
+@@ -106,12 +200,78 @@
              <x-box class="side-box expanded">
                  <x-info-panel :infoPanelObj="$license" img_path="{{ app('licenses_upload_url') }}" :qr_code_url="route('qr_code/common', ['object_type' => 'licenses', 'id' => $license->id])">
  
@@ -194,7 +213,7 @@ index 15ca47d577..57156a7fd4 100755
                          @can('checkout', $license)
  
                              @if (($license->availCount()->count() > 0) && (!$license->isInactive()))
-@@ -180,6 +321,34 @@
+@@ -180,6 +340,67 @@
            ])
  @endcan
  
@@ -222,6 +241,39 @@ index 15ca47d577..57156a7fd4 100755
 +                remainingRow.classList.add('text-danger');
 +                @endif
 +            }
++        });
++    </script>
++
++    {{-- [floating-licenses addon] bulk-select checkboxes for the floating
++         assignments table (posts floating:<id> to the core bulk-checkin route) --}}
++    <script>
++        document.addEventListener('DOMContentLoaded', function () {
++            var boxes = function () { return document.querySelectorAll('.floating-allocation-checkbox'); };
++            var goButton = document.getElementById('floatingBulkCheckinButton');
++            var countWrap = document.getElementById('floatingBulkCheckinCount');
++            var selectAll = document.getElementById('floatingSelectAll');
++
++            function refreshFloatingSelection() {
++                var checked = document.querySelectorAll('.floating-allocation-checkbox:checked').length;
++                if (goButton) { goButton.disabled = checked === 0; }
++                if (countWrap) {
++                    countWrap.querySelector('.badge').textContent = checked;
++                    countWrap.style.display = checked ? 'inline' : 'none';
++                }
++                if (selectAll) {
++                    var total = boxes().length;
++                    selectAll.indeterminate = checked > 0 && checked < total;
++                    selectAll.checked = checked === total && total > 0;
++                }
++            }
++
++            document.addEventListener('change', function (event) {
++                if (event.target.matches('.floating-allocation-checkbox')) { refreshFloatingSelection(); }
++                if (event.target === selectAll) {
++                    boxes().forEach(function (box) { box.checked = selectAll.checked; });
++                    refreshFloatingSelection();
++                }
++            });
 +        });
 +    </script>
 +@endif
