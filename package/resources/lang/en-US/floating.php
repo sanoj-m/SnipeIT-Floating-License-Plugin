@@ -39,6 +39,7 @@ return [
     'enable_help' => 'Pool size comes from the Seats field and total cost from Purchase Cost. Unchecking disables floating (only when there are no active allocations).',
     'over_allocated' => 'Over-allocated',
     'over_allocated_label' => 'Over-allocated: :assigned assigned / :pool seats (+:excess)',
+    'over_allocated_short' => 'over-allocated',
     'assigned_users' => 'Assigned Users',
     'cost_per_user' => 'Cost per User',
     'license_type' => 'License Type',

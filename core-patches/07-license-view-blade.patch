@@ -1,5 +1,5 @@
 diff --git a/resources/views/licenses/view.blade.php b/resources/views/licenses/view.blade.php
-index 15ca47d577..9aa91f11e5 100755
+index 15ca47d577..30f6e6282b 100755
 --- a/resources/views/licenses/view.blade.php
 +++ b/resources/views/licenses/view.blade.php
 @@ -13,6 +13,24 @@
@@ -63,7 +63,7 @@ index 15ca47d577..9aa91f11e5 100755
                          <x-table
                              fixed_right_number="1"
                              fixed_number="1"
-@@ -64,11 +89,82 @@
+@@ -64,11 +89,92 @@
                              :presenter="\App\Presenters\LicensePresenter::dataTableLayoutSeats()"
                              export_filename="export-{{ str_slug($license->name) }}-assigned-{{ date('Y-m-d') }}"
                          />
@@ -72,30 +72,31 @@ index 15ca47d577..9aa91f11e5 100755
 +                        {{-- Floating-licenses addon: floating assignments rendered as THE
 +                             assigned table (single header set + single bulk-checkin bar) --}}
 +                        @if ($floatingConfig && $floatingAllocations->isNotEmpty())
-+                            @if ($floatingStats['over_allocated'])
-+                                <div class="alert alert-warning">
-+                                    <span class="label label-warning">
-+                                        {{ trans('floating-licenses::floating.over_allocated_label', [
-+                                            'assigned' => $floatingStats['active'],
-+                                            'pool' => $floatingStats['pool_size'],
-+                                            'excess' => $floatingStats['excess'],
-+                                        ]) }}
++                            <div class="clearfix" style="margin:10px 0;">
++                                @can('checkin', \App\Models\License::class)
++                                <form method="POST" action="{{ route('licenses.bulkcheckin.selected') }}" id="floatingBulkCheckinForm" class="form-inline hidden-print" style="display:inline-block;">
++                                    @csrf
++                                    <select name="bulk_actions" class="form-control select2" style="min-width:200px;">
++                                        <option value="checkin">{{ trans('general.checkin') }}</option>
++                                    </select>
++                                    <button type="submit" id="floatingBulkCheckinButton" class="btn btn-theme" disabled>{{ trans('button.go') }}</button>
++                                    <span id="floatingBulkCheckinCount" style="display:none; margin-left:8px; line-height:34px;">&mdash; <span class="badge">0</span> {{ trans('general.selected') }}</span>
++                                </form>
++                                @endcan
++
++                                <div class="pull-right" style="line-height:34px;">
++                                    <span class="label label-info" style="font-size:90%;">
++                                        {{ $floatingStats['active'] }} / {{ $floatingStats['pool_size'] }} {{ trans('general.assigned') }}
 +                                    </span>
++                                    @if ($floatingStats['over_allocated'])
++                                        <span class="label label-warning" style="font-size:90%;">
++                                            +{{ $floatingStats['excess'] }} {{ trans('floating-licenses::floating.over_allocated_short') }}
++                                        </span>
++                                    @endif
 +                                </div>
-+                            @endif
++                            </div>
 +
-+                            @can('checkin', \App\Models\License::class)
-+                            <form method="POST" action="{{ route('licenses.bulkcheckin.selected') }}" id="floatingBulkCheckinForm" class="form-inline hidden-print" style="margin-bottom:10px;">
-+                                @csrf
-+                                <select name="bulk_actions" class="form-control select2" style="min-width:200px;">
-+                                    <option value="checkin">{{ trans('general.checkin') }}</option>
-+                                </select>
-+                                <button type="submit" id="floatingBulkCheckinButton" class="btn btn-theme" disabled>{{ trans('button.go') }}</button>
-+                                <span id="floatingBulkCheckinCount" style="display:none; margin-left:8px; line-height:34px;">&mdash; <span class="badge">0</span> {{ trans('general.selected') }}</span>
-+                            </form>
-+                            @endcan
-+
-+                            <table class="table table-striped">
++                            <table class="table table-striped" id="floatingAssignedTable">
 +                                <thead>
 +                                    <tr>
 +                                        @can('checkin', \App\Models\License::class)
@@ -136,6 +137,15 @@ index 15ca47d577..9aa91f11e5 100755
 +                                    @endforeach
 +                                </tbody>
 +                            </table>
++
++                            <div class="clearfix hidden-print" id="floatingPager" style="margin-top:5px;">
++                                <span class="text-muted" id="floatingPagerInfo"></span>
++                                <div class="pull-right">
++                                    <button type="button" class="btn btn-sm btn-default" id="floatingPagerPrev">&laquo;</button>
++                                    <span id="floatingPagerPages" style="margin:0 8px;"></span>
++                                    <button type="button" class="btn btn-sm btn-default" id="floatingPagerNext">&raquo;</button>
++                                </div>
++                            </div>
 +                        @endif
  
                      </x-tabs.pane>
@@ -146,7 +156,7 @@ index 15ca47d577..9aa91f11e5 100755
                      <x-tabs.pane name="available">
                          <x-slot:table_header>
                              {{ trans('general.available') }}
-@@ -82,6 +178,7 @@
+@@ -82,6 +188,7 @@
                          />
  
                      </x-tabs.pane>
@@ -154,7 +164,7 @@ index 15ca47d577..9aa91f11e5 100755
                      @endcan
  
  
-@@ -106,12 +203,78 @@
+@@ -106,12 +213,78 @@
              <x-box class="side-box expanded">
                  <x-info-panel :infoPanelObj="$license" img_path="{{ app('licenses_upload_url') }}" :qr_code_url="route('qr_code/common', ['object_type' => 'licenses', 'id' => $license->id])">
  
@@ -233,7 +243,7 @@ index 15ca47d577..9aa91f11e5 100755
                          @can('checkout', $license)
  
                              @if (($license->availCount()->count() > 0) && (!$license->isInactive()))
-@@ -180,6 +343,67 @@
+@@ -180,6 +353,112 @@
            ])
  @endcan
  
@@ -264,14 +274,44 @@ index 15ca47d577..9aa91f11e5 100755
 +        });
 +    </script>
 +
-+    {{-- [floating-licenses addon] bulk-select checkboxes for the floating
-+         assignments table (posts floating:<id> to the core bulk-checkin route) --}}
++    {{-- [floating-licenses addon] bulk-select checkboxes + client-side pagination
++         for the floating assignments table (posts floating:<id> to the core
++         bulk-checkin route) --}}
 +    <script>
 +        document.addEventListener('DOMContentLoaded', function () {
-+            var boxes = function () { return document.querySelectorAll('.floating-allocation-checkbox'); };
++            var PAGE_SIZE = 25;
++            var rows = Array.prototype.slice.call(document.querySelectorAll('#floatingAssignedTable tbody tr'));
++            var totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
++            var currentPage = 1;
++
 +            var goButton = document.getElementById('floatingBulkCheckinButton');
 +            var countWrap = document.getElementById('floatingBulkCheckinCount');
 +            var selectAll = document.getElementById('floatingSelectAll');
++            var pager = document.getElementById('floatingPager');
++            var pagerInfo = document.getElementById('floatingPagerInfo');
++            var pagerPages = document.getElementById('floatingPagerPages');
++
++            function visibleRows() {
++                var start = (currentPage - 1) * PAGE_SIZE;
++                return rows.slice(start, start + PAGE_SIZE);
++            }
++
++            function renderPage() {
++                rows.forEach(function (row) { row.style.display = 'none'; });
++                visibleRows().forEach(function (row) { row.style.display = ''; });
++
++                if (pager) { pager.style.display = rows.length > PAGE_SIZE ? '' : 'none'; }
++                if (pagerInfo) {
++                    var start = (currentPage - 1) * PAGE_SIZE + 1;
++                    var end = Math.min(rows.length, currentPage * PAGE_SIZE);
++                    pagerInfo.textContent = rows.length ? ('Showing ' + start + ' to ' + end + ' of ' + rows.length + ' rows') : '';
++                }
++                if (pagerPages) { pagerPages.textContent = currentPage + ' / ' + totalPages; }
++                document.getElementById('floatingPagerPrev').disabled = currentPage === 1;
++                document.getElementById('floatingPagerNext').disabled = currentPage === totalPages;
++
++                refreshFloatingSelection();
++            }
 +
 +            function refreshFloatingSelection() {
 +                var checked = document.querySelectorAll('.floating-allocation-checkbox:checked').length;
@@ -281,19 +321,34 @@ index 15ca47d577..9aa91f11e5 100755
 +                    countWrap.style.display = checked ? 'inline' : 'none';
 +                }
 +                if (selectAll) {
-+                    var total = boxes().length;
-+                    selectAll.indeterminate = checked > 0 && checked < total;
-+                    selectAll.checked = checked === total && total > 0;
++                    // select-all acts on the current page's rows
++                    var pageBoxes = visibleRows().map(function (row) { return row.querySelector('.floating-allocation-checkbox'); })
++                        .filter(function (box) { return box; });
++                    var pageChecked = pageBoxes.filter(function (box) { return box.checked; }).length;
++                    selectAll.indeterminate = pageChecked > 0 && pageChecked < pageBoxes.length;
++                    selectAll.checked = pageBoxes.length > 0 && pageChecked === pageBoxes.length;
 +                }
 +            }
 +
 +            document.addEventListener('change', function (event) {
 +                if (event.target.matches('.floating-allocation-checkbox')) { refreshFloatingSelection(); }
 +                if (event.target === selectAll) {
-+                    boxes().forEach(function (box) { box.checked = selectAll.checked; });
++                    visibleRows().forEach(function (row) {
++                        var box = row.querySelector('.floating-allocation-checkbox');
++                        if (box) { box.checked = selectAll.checked; }
++                    });
 +                    refreshFloatingSelection();
 +                }
 +            });
++
++            document.getElementById('floatingPagerPrev').addEventListener('click', function () {
++                if (currentPage > 1) { currentPage--; renderPage(); }
++            });
++            document.getElementById('floatingPagerNext').addEventListener('click', function () {
++                if (currentPage < totalPages) { currentPage++; renderPage(); }
++            });
++
++            renderPage();
 +        });
 +    </script>
 +@endif
