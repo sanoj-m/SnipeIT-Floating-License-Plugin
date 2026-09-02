@@ -1,5 +1,5 @@
 diff --git a/resources/views/licenses/view.blade.php b/resources/views/licenses/view.blade.php
-index 15ca47d577..1a7b81b2ed 100755
+index 15ca47d577..9aa91f11e5 100755
 --- a/resources/views/licenses/view.blade.php
 +++ b/resources/views/licenses/view.blade.php
 @@ -13,6 +13,24 @@
@@ -19,7 +19,7 @@ index 15ca47d577..1a7b81b2ed 100755
 +            : null;
 +        $floatingService = app(\SnipeIt\FloatingLicenses\Services\FloatingLicenseService::class);
 +        $floatingAllocations = $floatingConfig
-+            ? $floatingConfig->activeAllocations()->with(['user', 'asset'])->orderBy('allocated_at', 'desc')->get()
++            ? $floatingConfig->activeAllocations()->with(['user.company', 'user.location', 'asset'])->orderBy('allocated_at', 'desc')->get()
 +            : collect();
 +        $floatingStats = $floatingConfig ? $floatingService->availability($floatingConfig) : null;
 +        $floatingCostPerUser = $floatingConfig ? $floatingService->costPerUser($floatingConfig) : 0.0;
@@ -42,14 +42,36 @@ index 15ca47d577..1a7b81b2ed 100755
                      @endcan
  
                      <x-tabs.files-tab :item="$license" count="{{ $license->uploads()->count() }}"/>
-@@ -65,10 +85,83 @@
+@@ -47,6 +67,9 @@
+                         </x-slot:table_header>
+ 
+                         @can('checkin', $license)
++                        {{-- [floating-licenses addon] the core seat table has no
++                             rows for floating licenses — suppress its bulk bar too --}}
++                        @if (! $floatingConfig)
+                         <x-slot:bulkactions>
+                             <x-table.bulk-actions
+                                 action_route="{{ route('licenses.bulkcheckin.selected') }}"
+@@ -55,8 +78,10 @@
+                                 <option value="checkin">{{ trans('general.checkin') }}</option>
+                             </x-table.bulk-actions>
+                         </x-slot:bulkactions>
++                        @endif
+                         @endcan
+ 
++                        @if (! $floatingConfig)
+                         <x-table
+                             fixed_right_number="1"
+                             fixed_number="1"
+@@ -64,11 +89,82 @@
+                             :presenter="\App\Presenters\LicensePresenter::dataTableLayoutSeats()"
                              export_filename="export-{{ str_slug($license->name) }}-assigned-{{ date('Y-m-d') }}"
                          />
- 
-+                        {{-- Floating-licenses addon: floating-assigned users + over-allocation indicator --}}
-+                        @if ($floatingConfig && $floatingAllocations->isNotEmpty())
-+                            <h4>{{ trans('floating-licenses::floating.floating_assignments_heading') }}</h4>
++                        @endif
 +
++                        {{-- Floating-licenses addon: floating assignments rendered as THE
++                             assigned table (single header set + single bulk-checkin bar) --}}
++                        @if ($floatingConfig && $floatingAllocations->isNotEmpty())
 +                            @if ($floatingStats['over_allocated'])
 +                                <div class="alert alert-warning">
 +                                    <span class="label label-warning">
@@ -79,13 +101,12 @@ index 15ca47d577..1a7b81b2ed 100755
 +                                        @can('checkin', \App\Models\License::class)
 +                                            <th class="hidden-print" style="width:30px;"><input type="checkbox" id="floatingSelectAll" class="hidden-print" aria-label="{{ trans('general.select_all_none') }}"></th>
 +                                        @endcan
-+                                        <th>{{ trans('floating-licenses::floating.user') }}</th>
-+                                        <th>{{ trans('floating-licenses::floating.asset') }}</th>
-+                                        <th>{{ trans('floating-licenses::floating.allocated_at') }}</th>
-+                                        @can('floating_licenses.costs')
-+                                            <th>{{ trans('floating-licenses::floating.allocated_cost') }}</th>
-+                                        @endcan
-+                                        <th>{{ trans('floating-licenses::floating.actions') }}</th>
++                                        <th>{{ trans('general.user') }}</th>
++                                        <th>{{ trans('general.email') }}</th>
++                                        <th>{{ trans('general.companies') }}</th>
++                                        <th>{{ trans('general.asset') }}</th>
++                                        <th>{{ trans('general.location') }}</th>
++                                        <th class="hidden-print">{{ trans('general.checkin') }}/{{ trans('general.checkout') }}</th>
 +                                    </tr>
 +                                </thead>
 +                                <tbody>
@@ -97,12 +118,11 @@ index 15ca47d577..1a7b81b2ed 100755
 +                                                </td>
 +                                            @endcan
 +                                            <td>@if ($allocation->user)<a href="{{ route('users.show', $allocation->user_id) }}">{{ $allocation->user->display_name }}</a>@else{{ $allocation->user_id }}@endif</td>
++                                            <td>{{ $allocation->user?->email }}</td>
++                                            <td>{{ $allocation->user?->company?->name }}</td>
 +                                            <td>{{ $allocation->asset?->present()?->name() ?? $allocation->asset?->asset_tag }}</td>
-+                                            <td>{{ $allocation->allocated_at }}</td>
-+                                            @can('floating_licenses.costs')
-+                                                <td>{{ $snipeSettings->default_currency }} {{ \App\Helpers\Helper::formatCurrencyOutput($allocation->allocated_cost) }}</td>
-+                                            @endcan
-+                                            <td>
++                                            <td>{{ $allocation->user?->location?->name }}</td>
++                                            <td class="hidden-print">
 +                                                {{-- [floating-licenses addon] mirrors the release handler's
 +                                                     authorization: own allocation OR release permission. --}}
 +                                                @if (($allocation->user_id === auth()->id()) || Gate::allows('floating_licenses.release'))
@@ -117,7 +137,7 @@ index 15ca47d577..1a7b81b2ed 100755
 +                                </tbody>
 +                            </table>
 +                        @endif
-+
+ 
                      </x-tabs.pane>
  
  
@@ -126,7 +146,7 @@ index 15ca47d577..1a7b81b2ed 100755
                      <x-tabs.pane name="available">
                          <x-slot:table_header>
                              {{ trans('general.available') }}
-@@ -82,6 +175,7 @@
+@@ -82,6 +178,7 @@
                          />
  
                      </x-tabs.pane>
@@ -134,7 +154,7 @@ index 15ca47d577..1a7b81b2ed 100755
                      @endcan
  
  
-@@ -106,12 +200,78 @@
+@@ -106,12 +203,78 @@
              <x-box class="side-box expanded">
                  <x-info-panel :infoPanelObj="$license" img_path="{{ app('licenses_upload_url') }}" :qr_code_url="route('qr_code/common', ['object_type' => 'licenses', 'id' => $license->id])">
  
@@ -213,7 +233,7 @@ index 15ca47d577..1a7b81b2ed 100755
                          @can('checkout', $license)
  
                              @if (($license->availCount()->count() > 0) && (!$license->isInactive()))
-@@ -180,6 +340,67 @@
+@@ -180,6 +343,67 @@
            ])
  @endcan
  

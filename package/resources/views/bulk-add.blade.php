@@ -18,9 +18,9 @@
                     <div class="form-group{{ $errors->has('user_ids') ? ' has-error' : '' }}">
                         <label>{{ trans('floating-licenses::floating.select_users') }}</label>
 
-                        <input type="text" id="bulkUserFilter" class="form-control" placeholder="{{ trans('general.search') }}" style="margin-bottom:8px;">
+                        <input type="text" id="bulkUserFilter" class="form-control" placeholder="{{ trans('general.search') }}" style="margin-bottom:12px;">
 
-                        <div class="checkbox" style="margin-top:0;">
+                        <div class="checkbox" style="margin:0 0 10px 0; padding-bottom:10px; border-bottom:1px solid #e5e5e5;">
                             <label>
                                 <input type="checkbox" id="bulkUserSelectAll">
                                 <strong>{{ trans('general.select_all_none') }}</strong>
@@ -28,11 +28,11 @@
                             </label>
                         </div>
 
-                        <div id="bulkUserList" style="max-height:350px; overflow-y:auto; border:1px solid #d2d6de; border-radius:4px; padding:8px 12px;">
+                        <div id="bulkUserList" style="max-height:400px; overflow-y:auto; border:1px solid #d2d6de; border-radius:4px; padding:4px 0;">
                             @foreach ($users as $user)
-                            <div class="checkbox bulk-user-row" style="padding:4px 0; margin:0;" data-search="{{ strtolower($user->display_name . ' ' . $user->username) }}">
-                                <label>
-                                    <input type="checkbox" name="user_ids[]" value="{{ $user->id }}" class="bulk-user-checkbox">
+                            <div class="checkbox bulk-user-row" style="padding:8px 14px; margin:0; border-bottom:1px solid #f2f2f2;" data-search="{{ strtolower($user->display_name . ' ' . $user->username) }}">
+                                <label style="display:block; margin:0;">
+                                    <input type="checkbox" name="user_ids[]" value="{{ $user->id }}" class="bulk-user-checkbox" style="margin-right:6px;">
                                     {{ $user->display_name }} ({{ $user->username }})
                                 </label>
                             </div>
