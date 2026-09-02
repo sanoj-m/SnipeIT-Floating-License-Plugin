@@ -25,7 +25,8 @@ class FloatingLicenseSync
      * on and no config exists yet, a default config is lazily created AND
      * persisted from the license's own attributes (seats = pool size,
      * purchase_cost = total cost, active_user cost spread, over-allocation
-     * on) — master switch on means every license behaves floating. Returns
+     * on) — master switch on means every license behaves floating, unless a
+     * soft-deleted config marks it as explicitly disabled. Returns
      * null when the master switch is off and no config exists.
      */
     public static function configForLicense(License $license): ?FloatingLicenseConfig
@@ -37,6 +38,13 @@ class FloatingLicenseSync
         }
 
         if (! self::isEnabled()) {
+            return null;
+        }
+
+        // A soft-deleted config means floating was explicitly disabled on this
+        // license — do not lazily recreate it (syncFromRequest() revives the
+        // trashed record if the user re-enables floating via the edit form).
+        if (FloatingLicenseConfig::onlyTrashed()->where('license_id', $license->id)->exists()) {
             return null;
         }
 

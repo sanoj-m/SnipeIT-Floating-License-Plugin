@@ -247,4 +247,15 @@ class LicenseFormSyncTest extends TestCase
         $this->assertEquals(FloatingLicenseConfig::COST_MODE_POOL_SLOT, $resolved->cost_mode);
         $this->assertFalse($resolved->allow_over_allocation);
     }
+
+    public function test_config_resolver_does_not_recreate_soft_deleted_config()
+    {
+        $license = License::factory()->create(['seats' => 5]);
+        $config = $this->createFloatingConfig($license);
+        $config->delete();
+
+        $this->assertNull(FloatingLicenseSync::configForLicense($license),
+            'A soft-deleted config means explicitly disabled — must not be lazily recreated');
+        $this->assertEquals(0, FloatingLicenseConfig::where('license_id', $license->id)->count());
+    }
 }
