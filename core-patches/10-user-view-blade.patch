@@ -1,5 +1,5 @@
 diff --git a/resources/views/users/view.blade.php b/resources/views/users/view.blade.php
-index 13e40a4a60..dd885b3ae8 100755
+index 13e40a4a60..e464b3a9a9 100755
 --- a/resources/views/users/view.blade.php
 +++ b/resources/views/users/view.blade.php
 @@ -13,6 +13,18 @@
@@ -7,8 +7,8 @@ index 13e40a4a60..dd885b3ae8 100755
  @section('content')
  
 +    @php
-+        {{-- Floating-licenses addon (master switch in Admin > Settings > General):
-+             active floating allocations for this user, shown in the Licenses pane. --}}
++        // Floating-licenses addon (master switch in Admin > Settings > General):
++        // active floating allocations for this user, shown in the Licenses pane.
 +        $floatingLicenseAllocations = (($snipeSettings->floating_licenses_enabled ?? '0') == '1')
 +            ? \SnipeIt\FloatingLicenses\Models\FloatingLicenseAllocation::active()
 +                ->where('user_id', $user->id)
