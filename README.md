@@ -38,19 +38,6 @@ all 35).
 - **Audit logging** into Snipe-IT's standard activity report, REST API
   endpoints, optional lease durations/expiration (`floating-licenses:expire`).
 
-## Screenshots
-
-| | |
-|---|---|
-| Licenses list — Avail goes negative when over-allocated | ![Licenses list](docs/screenshots/01-licenses-list.png) |
-| License view — info panel rows + over-allocation label | ![License info](docs/screenshots/02-license-view-info.png) |
-| Floating-assigned users + per-user Checkin + over-allocation alert | ![Floating users](docs/screenshots/03-license-view-floating-users.png) |
-| License edit — Floating / Concurrent section | ![Edit form](docs/screenshots/04-license-edit-floating-section.png) |
-| Checkout page — floating-aware availability + exhaustion callout | ![Checkout](docs/screenshots/05-license-checkout.png) |
-| Bulk Add Users | ![Bulk add](docs/screenshots/06-bulk-add.png) |
-| Bulk Remove Users | ![Bulk remove](docs/screenshots/07-bulk-remove.png) |
-| Admin master switch | ![Master switch](docs/screenshots/08-admin-master-switch.png) |
-
 ## Requirements
 
 - Snipe-IT **v8.x** (developed and tested against **v8.7.2** live and current
