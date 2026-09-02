@@ -1,6 +1,6 @@
 # Core patches
 
-The plugin needs eleven small, guarded edits to Snipe-IT core files. Each patch
+The plugin needs twelve small, guarded edits to Snipe-IT core files. Each patch
 is a real unified diff generated from a working Snipe-IT tree and applies with:
 
 ```bash
@@ -30,6 +30,7 @@ easy to find and re-apply after a Snipe-IT upgrade.
 | `09-settings-general-blade.patch` | `resources/views/settings/general.blade.php` | One `x-form.checkbox-row` named `floating_licenses_enabled` ("Floating Licenses (addon)") in General settings. | After the `shortcuts_enabled` checkbox-row |
 | `10-user-view-blade.patch` | `resources/views/users/view.blade.php` | User profile Licenses tab: loads the user's active floating allocations (master-switch guarded), adds a "License Type" column (Fixed Seats vs Floating / Concurrent), renders floating allocations as rows with allocated cost and a per-row Checkin button (POST to `floating-licenses.allocations.release`), and includes the floating count in the tab badge and transfer-button condition. | Top of `@section('content')`, the `licenses` tab pane, the `x-tabs.license-tab` count, the transfer-button `@if` |
 | `11-phpunit-xml.patch` | `phpunit.xml` | Registers a `FloatingLicenses` testsuite pointing at `packages/floating-licenses/tests` so `php artisan test --testsuite=FloatingLicenses` works. | After the `Feature` testsuite |
+| `12-license-checkin-controller.patch` | `app/Http/Controllers/Licenses/LicenseCheckinController.php` | `bulkCheckinSelected()` accepts `floating:<allocation_id>` entries in `ids[]` (submitted by the user-profile Licenses tab checkboxes) and releases them via `FloatingLicenseService::release()`, with the same authorization as the release handler. | Inside `bulkCheckinSelected()`, after `$request->input('ids')` and before the final redirect |
 
 ## If git apply fails
 

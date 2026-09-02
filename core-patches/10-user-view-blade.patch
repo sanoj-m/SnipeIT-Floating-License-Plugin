@@ -1,5 +1,5 @@
 diff --git a/resources/views/users/view.blade.php b/resources/views/users/view.blade.php
-index 13e40a4a60..e464b3a9a9 100755
+index 13e40a4a60..89c137af73 100755
 --- a/resources/views/users/view.blade.php
 +++ b/resources/views/users/view.blade.php
 @@ -13,6 +13,18 @@
@@ -57,7 +57,7 @@ index 13e40a4a60..e464b3a9a9 100755
                                          <td class="col-md-4">
                                              @can('viewKeys', $license)
                                                  <code class="single-line"><span class="js-copy-link" data-clipboard-target=".js-copy-key-{{ $license->id }}" aria-hidden="true" data-tooltip="true" data-placement="top" title="{{ trans('general.copy_to_clipboard') }}"><span class="js-copy-key-{{ $license->id }}">{{ $license->serial }}</span></span></code>
-@@ -406,6 +422,38 @@
+@@ -406,6 +422,40 @@
                                          </td>
                                      </tr>
                                  @endforeach
@@ -65,7 +65,9 @@ index 13e40a4a60..e464b3a9a9 100755
 +                                @foreach ($floatingLicenseAllocations as $allocation)
 +                                    <tr>
 +                                        @can('checkin', \App\Models\License::class)
-+                                        <td class="hidden-print"></td>
++                                        <td class="hidden-print">
++                                            <input type="checkbox" class="user-license-seat-checkbox hidden-print" form="userLicenseBulkCheckinForm" name="ids[]" value="floating:{{ $allocation->id }}">
++                                        </td>
 +                                        @endcan
 +                                        <td class="col-md-4">
 +                                            {!! $allocation->license?->present()->nameUrl() !!}
@@ -96,7 +98,7 @@ index 13e40a4a60..e464b3a9a9 100755
                              </tbody>
                          </table>
                          @endcan
-@@ -621,7 +669,7 @@
+@@ -621,7 +671,7 @@
                          @endif
  
                          @can('checkout', \App\Models\Asset::class)
