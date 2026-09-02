@@ -28,11 +28,11 @@
                             </label>
                         </div>
 
-                        <div id="bulkUserList" style="max-height:400px; overflow-y:auto; border:1px solid #d2d6de; border-radius:4px; padding:4px 0;">
+                        <div id="bulkUserList" style="max-height:400px; overflow-y:auto; border:1px solid #d2d6de; border-radius:4px; padding:4px 14px;">
                             @foreach ($users as $user)
-                            <div class="checkbox bulk-user-row" style="padding:8px 14px; margin:0; border-bottom:1px solid #f2f2f2;" data-search="{{ strtolower($user->display_name . ' ' . $user->username) }}">
-                                <label style="display:block; margin:0;">
-                                    <input type="checkbox" name="user_ids[]" value="{{ $user->id }}" class="bulk-user-checkbox" style="margin-right:6px;">
+                            <div class="checkbox bulk-user-row" style="padding-top:6px; padding-bottom:6px; margin:0; border-bottom:1px solid #f2f2f2;" data-search="{{ strtolower($user->display_name . ' ' . $user->username) }}">
+                                <label>
+                                    <input type="checkbox" name="user_ids[]" value="{{ $user->id }}" class="bulk-user-checkbox">
                                     {{ $user->display_name }} ({{ $user->username }})
                                 </label>
                             </div>
