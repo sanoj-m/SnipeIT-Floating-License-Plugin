@@ -1,5 +1,5 @@
 diff --git a/resources/views/licenses/view.blade.php b/resources/views/licenses/view.blade.php
-index 15ca47d577..93172411b8 100755
+index 15ca47d577..57156a7fd4 100755
 --- a/resources/views/licenses/view.blade.php
 +++ b/resources/views/licenses/view.blade.php
 @@ -13,6 +13,24 @@
@@ -27,7 +27,22 @@ index 15ca47d577..93172411b8 100755
      <x-container columns="2">
          <x-page-column class="col-md-9 main-panel">
              <x-tabs>
-@@ -65,6 +83,59 @@
+@@ -26,12 +44,14 @@
+                     />
+ 
+                     @can('checkout', $license)
++                    @if (! $floatingConfig)
+                     <x-tabs.nav-item
+                             name="available"
+                             icon_type="available"
+                             label="{{ trans('general.available') }}"
+                             count="{{ $license->availCount()->count() }}"
+                     />
++                    @endif
+                     @endcan
+ 
+                     <x-tabs.files-tab :item="$license" count="{{ $license->uploads()->count() }}"/>
+@@ -65,10 +85,64 @@
                              export_filename="export-{{ str_slug($license->name) }}-assigned-{{ date('Y-m-d') }}"
                          />
  
@@ -87,22 +102,20 @@ index 15ca47d577..93172411b8 100755
                      </x-tabs.pane>
  
  
-@@ -74,6 +145,14 @@
+                     @can('checkout', $license)
++                    @if (! $floatingConfig)
+                     <x-tabs.pane name="available">
+                         <x-slot:table_header>
                              {{ trans('general.available') }}
-                         </x-slot:table_header>
+@@ -82,6 +156,7 @@
+                         />
  
-+                        {{-- [floating-licenses addon] Per-seat checkout is suppressed for
-+                             floating licenses (see LicenseSeatsTransformer hunk); explain why. --}}
-+                        @if ($floatingConfig)
-+                            <div class="callout callout-info">
-+                                <p>{{ trans('floating-licenses::floating.available_tab_note') }}</p>
-+                            </div>
-+                        @endif
-+
-                         <x-table
-                             show_search="false"
-                             api_url="{{ route('api.licenses.seats.index', [$license->id, 'status' => 'available']) }}"
-@@ -106,12 +185,78 @@
+                     </x-tabs.pane>
++                    @endif
+                     @endcan
+ 
+ 
+@@ -106,12 +181,78 @@
              <x-box class="side-box expanded">
                  <x-info-panel :infoPanelObj="$license" img_path="{{ app('licenses_upload_url') }}" :qr_code_url="route('qr_code/common', ['object_type' => 'licenses', 'id' => $license->id])">
  
@@ -181,7 +194,7 @@ index 15ca47d577..93172411b8 100755
                          @can('checkout', $license)
  
                              @if (($license->availCount()->count() > 0) && (!$license->isInactive()))
-@@ -180,6 +325,34 @@
+@@ -180,6 +321,34 @@
            ])
  @endcan
  
